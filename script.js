@@ -17,9 +17,10 @@ function initializeArray(length, value) {
 var keyPressCount = 0;
 
 var historySize = 100;
-var measurementInterval = 1000; // milliseconds
+var stepSize = 1000; // milliseconds
 
 var timeOfLastMeasurement = null;
+var accumulator = 0;
 
 var keyPressData = initializeArray(historySize, 0);
 
@@ -44,23 +45,13 @@ var xScale = d3.scale.ordinal()
         .domain(d3.range(0, keyPressData.length))
         .rangeBands([0, width])
 
-function animateGraph(timestamp) {
+function step() {
+    keyPressData.shift();
+    keyPressData.push(keyPressCount);
+    keyPressCount = 0;
+}
 
-    if (!timeOfLastMeasurement) {
-        timeOfLastMeasurement = timestamp
-    }
-
-    var timeDelta = timestamp - timeOfLastMeasurement;
-
-    if (timeDelta > measurementInterval) {
-        timeOfLastMeasurement = timestamp;
-        keyPressData.shift();
-        keyPressData.push(keyPressCount);
-        keyPressCount = 0;
-    }
-
-    // console.log('keyPressData', keyPressData);
-
+function draw() {
     d3.select('#chart').html("");
 
     d3.select('#chart').append('svg')
@@ -80,8 +71,28 @@ function animateGraph(timestamp) {
             .attr('y', function(d) {
                 return height - yScale(d);
             });
-
-    requestAnimationFrame(animateGraph);
 }
 
-requestAnimationFrame(animateGraph);
+function tick(timestamp) {
+
+    if (!timeOfLastMeasurement) {
+        timeOfLastMeasurement = timestamp
+    }
+
+    var timeDelta = timestamp - timeOfLastMeasurement;
+    timeOfLastMeasurement = timestamp;
+    accumulator += timeDelta;
+
+    while (accumulator >= stepSize) {
+        step();
+        accumulator -= stepSize;
+    }
+
+    // console.log('keyPressData', keyPressData);
+
+    draw();
+
+    requestAnimationFrame(tick);
+}
+
+requestAnimationFrame(tick);
